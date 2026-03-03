@@ -22,6 +22,6 @@ Estes requisitos focam na operação de campo e gestão de estoque, utilizando a
 | **RNF-L02** | **Segurança JWT** | Toda comunicação com a API deve ser autenticada via token JWT, respeitando os níveis de acesso já existentes. |
 | **RNF-L03** | **Interface de Alto Contraste** | O design deve facilitar a leitura em ambientes de galpão/depósito com iluminação precária (suporte a Dark Mode). |
 | **RNF-L04** | **Baixo Consumo de Dados** | As listagens de doações devem utilizar paginação rigorosa para evitar o consumo excessivo de dados móveis em campo. |
-| **RNF-L05** | **Compatibilidade Cross-Platform** | O aplicativo deve ser desenvolvido em tecnologia híbrida (ex: React Native ou Flutter) para rodar em Android e iOS. |
+| **RNF-L05** | **Compatibilidade Cross-Platform** | O aplicativo deve ser desenvolvido em tecnologia híbrida React Native para rodar em Android e iOS. |
 | **RNF-L06** | **Persistência Local** | Cache local de categorias e tipos de doação para garantir rapidez na navegação e filtragem. |
 | **RNF-L07** | **Integridade de Dados** | O sistema deve garantir que operações de decremento de estoque não resultem em quantidades negativas. |
