@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json}\"",
     "start": "expo start",
     "start:clear": "expo start --clear",
     "start:tunnel": "expo start --tunnel",
@@ -37,6 +39,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.10",
+    "prettier": "^3.4.2",
     "typescript": "~5.9.2"
   },
   "private": true
