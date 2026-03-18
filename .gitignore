@@ -40,3 +40,9 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+_expo_temp/
+expo-init/
+.expo/
+node_modules/
+dist/
+build/
