@@ -3,6 +3,8 @@ import React, { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -10,6 +12,7 @@ import {
   View,
 } from 'react-native'
 
+import { DismissKeyboardOnTap } from '../components/DismissKeyboardOnTap'
 import type { DonationsStackParamList } from '../navigation/DonationsStack'
 import type { IDonation } from '../types/donation'
 import { getDonationById, updateDonation } from '../services/donationService'
@@ -79,42 +82,52 @@ export function DonationDetailScreen() {
   const unit = donation.category?.measure_unity ?? '—'
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.cardTitle}>{donation.name}</Text>
-      <Text style={styles.label}>Unidade de medida (categoria)</Text>
-      <Text style={styles.value}>{unit}</Text>
-      <Text style={styles.label}>Doador</Text>
-      <Text style={styles.value}>{donation.donator_name ?? '—'}</Text>
-      <Text style={styles.label}>Quantidade atual</Text>
-      <TextInput
-        style={styles.input}
-        value={currentQuantity}
-        onChangeText={setCurrentQuantity}
-        placeholder="0"
-        placeholderTextColor={colors.mutedText}
-        keyboardType="numeric"
-      />
-      <TouchableOpacity
-        style={[styles.toggle, !available && styles.toggleOff]}
-        onPress={() => setAvailable(!available)}
-      >
-        <Text style={styles.toggleText}>
-          {available ? 'Disponível' : 'Indisponível (reparo/higienização)'}
-        </Text>
-      </TouchableOpacity>
-      {saving ? (
-        <ActivityIndicator color={colors.primary} style={styles.loader} />
-      ) : (
-        <TouchableOpacity style={styles.btnPrimary} onPress={handleSave}>
-          <Text style={styles.btnPrimaryText}>Salvar</Text>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+    >
+      <DismissKeyboardOnTap fill={false}>
+        <Text style={styles.cardTitle}>{donation.name}</Text>
+        <Text style={styles.label}>Unidade de medida (categoria)</Text>
+        <Text style={styles.value}>{unit}</Text>
+        <Text style={styles.label}>Doador</Text>
+        <Text style={styles.value}>{donation.donator_name ?? '—'}</Text>
+        <Text style={styles.label}>Quantidade atual</Text>
+        <TextInput
+          style={styles.input}
+          value={currentQuantity}
+          onChangeText={setCurrentQuantity}
+          placeholder="0"
+          placeholderTextColor={colors.mutedText}
+          keyboardType="numeric"
+          returnKeyType="done"
+          onSubmitEditing={Keyboard.dismiss}
+        />
+        <TouchableOpacity
+          style={[styles.toggle, !available && styles.toggleOff]}
+          onPress={() => setAvailable(!available)}
+        >
+          <Text style={styles.toggleText}>
+            {available ? 'Disponível' : 'Indisponível (reparo/higienização)'}
+          </Text>
         </TouchableOpacity>
-      )}
-    </View>
+        {saving ? (
+          <ActivityIndicator color={colors.primary} style={styles.loader} />
+        ) : (
+          <TouchableOpacity style={styles.btnPrimary} onPress={handleSave}>
+            <Text style={styles.btnPrimaryText}>Salvar</Text>
+          </TouchableOpacity>
+        )}
+      </DismissKeyboardOnTap>
+    </ScrollView>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: 24 },
+  scroll: { flex: 1, backgroundColor: colors.background },
+  container: { padding: 24, paddingBottom: 40 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   cardTitle: {
     fontFamily: fontFamilies.semiBold,

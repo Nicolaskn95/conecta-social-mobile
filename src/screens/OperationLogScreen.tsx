@@ -1,6 +1,15 @@
 import React, { useState } from 'react'
-import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native'
 
+import { DismissKeyboardOnTap } from '../components/DismissKeyboardOnTap'
 import { saveLog } from '../storage/operationLogStorage'
 import { colors } from '../theme/colors'
 import { fontFamilies } from '../theme/typography'
@@ -28,51 +37,59 @@ export function OperationLogScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.label}>Tipo</Text>
-      <View style={styles.row}>
-        <TouchableOpacity
-          style={[styles.typeBtn, logType === 'triagem' && styles.typeBtnActive]}
-          onPress={() => setLogType('triagem')}
-          disabled={saving}
-        >
-          <Text style={[styles.typeBtnText, logType === 'triagem' && styles.typeBtnTextActive]}>
-            Triagem
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.typeBtn, logType === 'movimentacao' && styles.typeBtnActive]}
-          onPress={() => setLogType('movimentacao')}
-          disabled={saving}
-        >
-          <Text
-            style={[styles.typeBtnText, logType === 'movimentacao' && styles.typeBtnTextActive]}
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+    >
+      <DismissKeyboardOnTap fill={false}>
+        <Text style={styles.label}>Tipo</Text>
+        <View style={styles.row}>
+          <TouchableOpacity
+            style={[styles.typeBtn, logType === 'triagem' && styles.typeBtnActive]}
+            onPress={() => setLogType('triagem')}
+            disabled={saving}
           >
-            Movimentação
-          </Text>
+            <Text style={[styles.typeBtnText, logType === 'triagem' && styles.typeBtnTextActive]}>
+              Triagem
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.typeBtn, logType === 'movimentacao' && styles.typeBtnActive]}
+            onPress={() => setLogType('movimentacao')}
+            disabled={saving}
+          >
+            <Text
+              style={[styles.typeBtnText, logType === 'movimentacao' && styles.typeBtnTextActive]}
+            >
+              Movimentação
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.label}>Mensagem</Text>
+        <TextInput
+          style={[styles.input, styles.inputMultiline]}
+          value={message}
+          onChangeText={setMessage}
+          placeholder="Descreva o estado da triagem ou movimentação..."
+          placeholderTextColor={colors.mutedText}
+          multiline
+          numberOfLines={4}
+          editable={!saving}
+        />
+        <Text style={styles.hint}>Evento (opcional): em breve.</Text>
+        <TouchableOpacity style={styles.btnPrimary} onPress={handleRegister} disabled={saving}>
+          <Text style={styles.btnPrimaryText}>{saving ? 'Salvando...' : 'Registrar log'}</Text>
         </TouchableOpacity>
-      </View>
-      <Text style={styles.label}>Mensagem</Text>
-      <TextInput
-        style={[styles.input, styles.inputMultiline]}
-        value={message}
-        onChangeText={setMessage}
-        placeholder="Descreva o estado da triagem ou movimentação..."
-        placeholderTextColor={colors.mutedText}
-        multiline
-        numberOfLines={4}
-        editable={!saving}
-      />
-      <Text style={styles.hint}>Evento (opcional): em breve.</Text>
-      <TouchableOpacity style={styles.btnPrimary} onPress={handleRegister} disabled={saving}>
-        <Text style={styles.btnPrimaryText}>{saving ? 'Salvando...' : 'Registrar log'}</Text>
-      </TouchableOpacity>
-    </View>
+      </DismissKeyboardOnTap>
+    </ScrollView>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: 24 },
+  scroll: { flex: 1, backgroundColor: colors.background },
+  container: { padding: 24, paddingBottom: 40 },
   label: {
     fontFamily: fontFamilies.semiBold,
     fontSize: 14,

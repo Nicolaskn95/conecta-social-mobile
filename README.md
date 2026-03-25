@@ -2,15 +2,15 @@
 
 Estes requisitos focam na operação de campo e gestão de estoque, utilizando a estrutura de dados já existente na API.
 
-| Código     | Requisito                         | Descrição                                                                                                    |
-| :--------- | :-------------------------------- | :----------------------------------------------------------------------------------------------------------- |
-| **RF-L01** | **Atualização de Inventário**     | O usuário deve poder atualizar a quantidade atual de um item após conferência física no depósito.            |
-| **RF-L02** | **Filtro por Atributos Físicos**  | O sistema deve permitir filtrar doações por tamanho e gênero para agilizar a montagem de kits para famílias. |
-| **RF-L03** | **Consulta de Unidade de Medida** | O app deve exibir a unidade de medida da categoria para evitar erros de entrada (ex: Kg vs Unidades).        |
-| **RF-L04** | **Registro de Logs de Operação**  | O sistema deve registrar mensagens sobre o estado da triagem ou movimentação de itens.                       |
-| **RF-L05** | **Alteração de Disponibilidade**  | Deve ser possível marcar um item como indisponível caso ele precise de reparo ou higienização.               |
-| **RF-L06** | **Rastreabilidade de Doadores**   | Exibição do nome do doador para identificar a origem de lotes específicos durante a triagem.                 |
-| **RF-L07** | **Vínculo com Eventos**           | Possibilidade de associar a atividade de logística a um evento específico de arrecadação ou entrega.         |
+| Código     | Requisito                            | Descrição                                                                                                    |
+| :--------- | :----------------------------------- | :----------------------------------------------------------------------------------------------------------- |
+| **RF-L01** | **Atualização de Inventário**        | O usuário deve poder atualizar a quantidade atual de um item após conferência física no depósito.            |
+| **RF-L02** | **Filtro por Atributos Físicos**     | O sistema deve permitir filtrar doações por tamanho e gênero para agilizar a montagem de kits para famílias. |
+| **RF-L03** | **Consulta de Unidade de Medida**    | O app deve exibir a unidade de medida da categoria para evitar erros de entrada (ex: Kg vs Unidades).        |
+| **RF-L04** | **Visualização de Logs de Operação** | o usuário consegue visualizar os logs que estão acontecendo pelo sistema.                                    |
+| **RF-L05** | **Alteração de Disponibilidade**     | Deve ser possível marcar um item como indisponível caso ele precise de reparo ou higienização.               |
+| **RF-L06** | **Rastreabilidade de Doadores**      | Exibição do nome do doador para identificar a origem de lotes específicos durante a triagem.                 |
+| **RF-L07** | **Vínculo com Eventos**              | Possibilidade de associar a atividade de logística a um evento específico de arrecadação ou entrega.         |
 
 > **Nota:** O acesso a estas funcionalidades é restrito a usuários autenticados com perfis `ADMIN`, `MANAGER` ou `VOLUNTEER`, utilizando o sistema de permissões via JWT já implementado.
 

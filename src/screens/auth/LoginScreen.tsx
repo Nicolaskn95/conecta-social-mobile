@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -11,6 +12,7 @@ import {
   View,
 } from 'react-native'
 
+import { DismissKeyboardOnTap } from '../../components/DismissKeyboardOnTap'
 import { env } from '../../config/env'
 import { useAuth } from '../../auth/useAuth'
 import { api } from '../../services/api'
@@ -25,6 +27,7 @@ const MOCK_USER = {
 
 export function LoginScreen() {
   const { signInWithToken } = useAuth()
+  const passwordRef = useRef<TextInput>(null)
   const [email, setEmail] = useState(MOCK_USER.email)
   const [password, setPassword] = useState(MOCK_USER.password)
   const [loading, setLoading] = useState(false)
@@ -68,47 +71,55 @@ export function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
     >
-      <Text style={styles.title}>Entrar</Text>
-      <Text style={styles.subtitle}>Conecte-se ao backend com e-mail e senha.</Text>
-      <Text style={styles.apiUrl} numberOfLines={1}>
-        API: {env.apiBaseUrl}
-      </Text>
+      <DismissKeyboardOnTap style={styles.inner}>
+        <Text style={styles.title}>Entrar</Text>
+        <Text style={styles.subtitle}>Conecte-se ao backend com e-mail e senha.</Text>
+        <Text style={styles.apiUrl} numberOfLines={1}>
+          API: {env.apiBaseUrl}
+        </Text>
 
-      <Text style={styles.label}>E-mail</Text>
-      <TextInput
-        value={email}
-        onChangeText={setEmail}
-        placeholder="seu@email.com"
-        placeholderTextColor={colors.mutedText}
-        style={styles.input}
-        autoCapitalize="none"
-        autoCorrect={false}
-        keyboardType="email-address"
-        editable={!loading}
-      />
+        <Text style={styles.label}>E-mail</Text>
+        <TextInput
+          value={email}
+          onChangeText={setEmail}
+          placeholder="seu@email.com"
+          placeholderTextColor={colors.mutedText}
+          style={styles.input}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          editable={!loading}
+          returnKeyType="next"
+          blurOnSubmit={false}
+          onSubmitEditing={() => passwordRef.current?.focus()}
+        />
 
-      <Text style={styles.label}>Senha</Text>
-      <TextInput
-        value={password}
-        onChangeText={setPassword}
-        placeholder="••••••••"
-        placeholderTextColor={colors.mutedText}
-        style={styles.input}
-        secureTextEntry
-        editable={!loading}
-      />
+        <Text style={styles.label}>Senha</Text>
+        <TextInput
+          ref={passwordRef}
+          value={password}
+          onChangeText={setPassword}
+          placeholder="••••••••"
+          placeholderTextColor={colors.mutedText}
+          style={styles.input}
+          secureTextEntry
+          editable={!loading}
+          returnKeyType="done"
+          onSubmitEditing={Keyboard.dismiss}
+        />
 
-      <TouchableOpacity
-        style={[styles.btn, styles.btnPrimary]}
-        onPress={handleLogin}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator color={colors.white} size="small" />
-        ) : (
-          <Text style={styles.btnPrimaryText}>Entrar</Text>
-        )}
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.btn, styles.btnPrimary]}
+          onPress={handleLogin}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color={colors.white} size="small" />
+          ) : (
+            <Text style={styles.btnPrimaryText}>Entrar</Text>
+          )}
+        </TouchableOpacity>
+      </DismissKeyboardOnTap>
     </KeyboardAvoidingView>
   )
 }
@@ -117,8 +128,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    padding: 24,
+  },
+  inner: {
+    flex: 1,
     justifyContent: 'center',
+    padding: 24,
   },
   title: {
     fontFamily: fontFamilies.bold,
