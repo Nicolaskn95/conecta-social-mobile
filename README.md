@@ -1,3 +1,13 @@
+# Conecta Social — Mobile
+
+## O que é este projeto
+
+O **Conecta Social (mobile)** é o aplicativo da plataforma Conecta Social, feito com **React Native** e **Expo**, para **Android** e **iOS**. Ele se conecta à API do backend (**conecta-social-api**) com autenticação **JWT** e atende quem atua na **arrecadação, triagem e distribuição de doações**.
+
+Em linhas gerais, o app apoia a **gestão de inventário em campo** (consultar itens, ajustar quantidades, marcar disponibilidade), o **acompanhamento de eventos** de arrecadação, o **registro de logs** de operação (triagem e movimentação) e o **acesso à conta** do usuário. A interface segue a mesma identidade visual do painel web ([conecta-social-web](conecta-social-web)), com foco em leitura clara em ambientes de trabalho reais (depósito, galpão, eventos ao ar livre).
+
+---
+
 ## Requisitos Funcionais
 
 Estes requisitos focam na operação de campo e gestão de estoque, utilizando a estrutura de dados já existente na API.
