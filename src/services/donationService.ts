@@ -40,3 +40,26 @@ export async function updateDonation(
     return null
   }
 }
+
+export async function allocateDonationToFamily(
+  donationId: string,
+  payload: { family_id: string; quantity: number }
+): Promise<{ donation: IDonation | null; errorMessage?: string }> {
+  try {
+    const res = await api.post<{ data?: IDonation }>(
+      `/donations/${donationId}/allocate`,
+      payload
+    )
+    const data = unwrap<IDonation>(res.data)
+    return { donation: data ?? null }
+  } catch (err: unknown) {
+    const msg =
+      err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        : undefined
+    return {
+      donation: null,
+      errorMessage: typeof msg === 'string' ? msg : 'Não foi possível destinar.',
+    }
+  }
+}

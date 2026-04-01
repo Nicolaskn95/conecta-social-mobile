@@ -1,9 +1,11 @@
+import { useHeaderHeight } from '@react-navigation/elements'
 import { useRoute, RouteProp } from '@react-navigation/native'
 import React, { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
   Keyboard,
+  KeyboardAvoidingView,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,14 +16,21 @@ import {
 
 import { DismissKeyboardOnTap } from '../components/DismissKeyboardOnTap'
 import type { DonationsStackParamList } from '../navigation/DonationsStack'
+import type { IFamily } from '../types/family'
 import type { IDonation } from '../types/donation'
-import { getDonationById, updateDonation } from '../services/donationService'
+import {
+  allocateDonationToFamily,
+  getDonationById,
+  updateDonation,
+} from '../services/donationService'
+import { getActiveFamilies } from '../services/familyService'
 import { colors } from '../theme/colors'
 import { fontFamilies } from '../theme/typography'
 
 type Route = RouteProp<DonationsStackParamList, 'DonationDetail'>
 
 export function DonationDetailScreen() {
+  const headerHeight = useHeaderHeight()
   const route = useRoute<Route>()
   const { donationId } = route.params
   const [donation, setDonation] = useState<IDonation | null>(null)
@@ -29,6 +38,11 @@ export function DonationDetailScreen() {
   const [saving, setSaving] = useState(false)
   const [currentQuantity, setCurrentQuantity] = useState('')
   const [available, setAvailable] = useState(true)
+  const [families, setFamilies] = useState<IFamily[]>([])
+  const [familiesLoading, setFamiliesLoading] = useState(true)
+  const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(null)
+  const [allocateQty, setAllocateQty] = useState('')
+  const [allocating, setAllocating] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -44,6 +58,24 @@ export function DonationDetailScreen() {
   useEffect(() => {
     load()
   }, [load])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      setFamiliesLoading(true)
+      try {
+        const list = await getActiveFamilies()
+        if (!cancelled) setFamilies(list)
+      } catch {
+        if (!cancelled) setFamilies([])
+      } finally {
+        if (!cancelled) setFamiliesLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const handleSave = async () => {
     const qty = Number(currentQuantity)
@@ -71,6 +103,41 @@ export function DonationDetailScreen() {
     }
   }
 
+  const handleAllocateToFamily = async () => {
+    if (!donation) return
+    if (!selectedFamilyId) {
+      Alert.alert('Família', 'Selecione uma família.')
+      return
+    }
+    const qty = Number(allocateQty)
+    if (!Number.isInteger(qty) || qty < 1) {
+      Alert.alert('Quantidade', 'Informe um número inteiro maior que zero.')
+      return
+    }
+    const stock = donation.current_quantity ?? 0
+    if (qty > stock) {
+      Alert.alert('Quantidade', 'Não há estoque suficiente para esta destinação.')
+      return
+    }
+    setAllocating(true)
+    try {
+      const { donation: updated, errorMessage } = await allocateDonationToFamily(donation.id, {
+        family_id: selectedFamilyId,
+        quantity: qty,
+      })
+      if (updated) {
+        setDonation(updated)
+        setCurrentQuantity(String(updated.current_quantity ?? 0))
+        setAllocateQty('')
+        Alert.alert('Sucesso', 'Quantidade destinada à família e estoque atualizado.')
+      } else {
+        Alert.alert('Erro', errorMessage ?? 'Não foi possível destinar.')
+      }
+    } finally {
+      setAllocating(false)
+    }
+  }
+
   if (loading || !donation) {
     return (
       <View style={styles.centered}>
@@ -82,52 +149,122 @@ export function DonationDetailScreen() {
   const unit = donation.category?.measure_unity ?? '—'
 
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.container}
-      keyboardShouldPersistTaps="handled"
-      keyboardDismissMode="on-drag"
+    <KeyboardAvoidingView
+      style={styles.avoid}
+      behavior="padding"
+      keyboardVerticalOffset={headerHeight}
     >
-      <DismissKeyboardOnTap fill={false}>
-        <Text style={styles.cardTitle}>{donation.name}</Text>
-        <Text style={styles.label}>Unidade de medida (categoria)</Text>
-        <Text style={styles.value}>{unit}</Text>
-        <Text style={styles.label}>Doador</Text>
-        <Text style={styles.value}>{donation.donator_name ?? '—'}</Text>
-        <Text style={styles.label}>Quantidade atual</Text>
-        <TextInput
-          style={styles.input}
-          value={currentQuantity}
-          onChangeText={setCurrentQuantity}
-          placeholder="0"
-          placeholderTextColor={colors.mutedText}
-          keyboardType="numeric"
-          returnKeyType="done"
-          onSubmitEditing={Keyboard.dismiss}
-        />
-        <TouchableOpacity
-          style={[styles.toggle, !available && styles.toggleOff]}
-          onPress={() => setAvailable(!available)}
-        >
-          <Text style={styles.toggleText}>
-            {available ? 'Disponível' : 'Indisponível (reparo/higienização)'}
-          </Text>
-        </TouchableOpacity>
-        {saving ? (
-          <ActivityIndicator color={colors.primary} style={styles.loader} />
-        ) : (
-          <TouchableOpacity style={styles.btnPrimary} onPress={handleSave}>
-            <Text style={styles.btnPrimaryText}>Salvar</Text>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator={false}
+      >
+        <DismissKeyboardOnTap fill={false}>
+          <Text style={styles.cardTitle}>{donation.name}</Text>
+          <Text style={styles.label}>Unidade de medida (categoria)</Text>
+          <Text style={styles.value}>{unit}</Text>
+          <Text style={styles.label}>Doador</Text>
+          <Text style={styles.value}>{donation.donator_name ?? '—'}</Text>
+          <Text style={styles.label}>Quantidade atual</Text>
+          <TextInput
+            style={styles.input}
+            value={currentQuantity}
+            onChangeText={setCurrentQuantity}
+            placeholder="0"
+            placeholderTextColor={colors.mutedText}
+            keyboardType="numeric"
+            returnKeyType="done"
+            onSubmitEditing={Keyboard.dismiss}
+          />
+          <TouchableOpacity
+            style={[styles.toggle, !available && styles.toggleOff]}
+            onPress={() => setAvailable(!available)}
+          >
+            <Text style={styles.toggleText}>
+              {available ? 'Disponível' : 'Indisponível (reparo/higienização)'}
+            </Text>
           </TouchableOpacity>
-        )}
-      </DismissKeyboardOnTap>
-    </ScrollView>
+          {saving ? (
+            <ActivityIndicator color={colors.primary} style={styles.loader} />
+          ) : (
+            <TouchableOpacity style={styles.btnPrimary} onPress={handleSave}>
+              <Text style={styles.btnPrimaryText}>Salvar</Text>
+            </TouchableOpacity>
+          )}
+
+          <View style={styles.sectionDivider} />
+          <Text style={styles.sectionTitle}>Destinar à família</Text>
+          <Text style={styles.sectionHint}>
+            Registra a entrega e reduz automaticamente a quantidade em estoque.
+          </Text>
+          {!donation.available ? (
+            <Text style={styles.warningText}>
+              Item indisponível: destinação bloqueada até marcar como disponível.
+            </Text>
+          ) : (donation.current_quantity ?? 0) < 1 ? (
+            <Text style={styles.warningText}>Sem quantidade em estoque para destinar.</Text>
+          ) : familiesLoading ? (
+            <ActivityIndicator color={colors.primary} style={styles.loader} />
+          ) : families.length === 0 ? (
+            <Text style={styles.emptyFamilies}>Nenhuma família ativa cadastrada na API.</Text>
+          ) : (
+            <>
+              <Text style={styles.label}>Família</Text>
+              <View style={styles.familyList}>
+                {families.map((f) => (
+                  <TouchableOpacity
+                    key={f.id}
+                    style={[styles.familyRow, selectedFamilyId === f.id && styles.familyRowActive]}
+                    onPress={() => setSelectedFamilyId(f.id)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.familyName}>{f.name}</Text>
+                    <Text style={styles.familyMeta}>
+                      {f.city} — {f.neighborhood}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={styles.label}>Quantidade a destinar ({unit})</Text>
+              <TextInput
+                style={styles.input}
+                value={allocateQty}
+                onChangeText={setAllocateQty}
+                placeholder="0"
+                placeholderTextColor={colors.mutedText}
+                keyboardType="number-pad"
+                returnKeyType="done"
+                onSubmitEditing={Keyboard.dismiss}
+                editable={!allocating}
+              />
+              {allocating ? (
+                <ActivityIndicator color={colors.primary} style={styles.loader} />
+              ) : (
+                <TouchableOpacity
+                  style={[
+                    styles.btnSecondary,
+                    (!selectedFamilyId || !allocateQty.trim()) && styles.btnDisabled,
+                  ]}
+                  onPress={handleAllocateToFamily}
+                  disabled={!selectedFamilyId || !allocateQty.trim()}
+                >
+                  <Text style={styles.btnSecondaryText}>Confirmar destinação</Text>
+                </TouchableOpacity>
+              )}
+            </>
+          )}
+        </DismissKeyboardOnTap>
+      </ScrollView>
+    </KeyboardAvoidingView>
   )
 }
 
 const styles = StyleSheet.create({
+  avoid: { flex: 1, backgroundColor: colors.background },
   scroll: { flex: 1, backgroundColor: colors.background },
-  container: { padding: 24, paddingBottom: 40 },
+  container: { padding: 24, paddingBottom: 120, flexGrow: 1 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   cardTitle: {
     fontFamily: fontFamilies.semiBold,
@@ -186,4 +323,74 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.white,
   },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: colors.tertiary,
+    marginTop: 28,
+    marginBottom: 8,
+  },
+  sectionTitle: {
+    fontFamily: fontFamilies.semiBold,
+    fontSize: 17,
+    color: colors.primary,
+    marginTop: 8,
+  },
+  sectionHint: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 13,
+    color: colors.mutedText,
+    marginTop: 6,
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  warningText: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 14,
+    color: colors.danger,
+    marginTop: 8,
+  },
+  emptyFamilies: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 14,
+    color: colors.mutedText,
+    marginTop: 8,
+  },
+  familyList: { marginTop: 6, gap: 8 },
+  familyRow: {
+    borderWidth: 1,
+    borderColor: colors.border_input,
+    borderRadius: 10,
+    padding: 12,
+    backgroundColor: colors.background,
+  },
+  familyRowActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.header_sidebar_color,
+  },
+  familyName: {
+    fontFamily: fontFamilies.semiBold,
+    fontSize: 15,
+    color: colors.text,
+  },
+  familyMeta: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 12,
+    color: colors.mutedText,
+    marginTop: 4,
+  },
+  btnSecondary: {
+    backgroundColor: colors.white,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  btnSecondaryText: {
+    fontFamily: fontFamilies.semiBold,
+    fontSize: 16,
+    color: colors.primary,
+  },
+  btnDisabled: { opacity: 0.45 },
 })

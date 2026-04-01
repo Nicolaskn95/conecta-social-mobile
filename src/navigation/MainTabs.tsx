@@ -8,6 +8,7 @@ import { colors } from '../theme/colors'
 import { fontFamilies } from '../theme/typography'
 import { EventsListScreen } from '../screens/EventsListScreen'
 import { HomeScreen } from '../screens/HomeScreen'
+import { ChartsScreen } from '../screens/ChartsScreen'
 import { OperationLogScreen } from '../screens/OperationLogScreen'
 import { ProfileScreen } from '../screens/ProfileScreen'
 
@@ -15,6 +16,7 @@ export type MainTabsParamList = {
   Home: undefined
   Donations: undefined
   Events: undefined
+  Charts: undefined
   Logs: undefined
   Profile: undefined
 }
@@ -39,6 +41,7 @@ export function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
+        lazy: true,
         headerTitleStyle: { fontFamily: fontFamilies.semiBold },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedText,
@@ -74,12 +77,23 @@ export function MainTabs() {
         }}
       />
       <Tab.Screen
+        name="Charts"
+        component={ChartsScreen}
+        options={{
+          title: 'Gráficos',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="bar-chart-outline" size={size} color={color} />
+          ),
+          tabBarLabel: ({ focused }) => <TabLabel label="Gráficos" focused={focused} />,
+        }}
+      />
+      <Tab.Screen
         name="Logs"
         component={OperationLogScreen}
         options={{
-          title: 'Registrar log',
+          title: 'Logs',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="document-text" size={size} color={color} />
+            <Ionicons name="list-outline" size={size} color={color} />
           ),
           tabBarLabel: ({ focused }) => <TabLabel label="Logs" focused={focused} />,
         }}

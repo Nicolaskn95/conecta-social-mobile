@@ -24,7 +24,7 @@ const sections: { title: string; body: string }[] = [
 const highlights: string[] = [
   'Gestão de doações e inventário',
   'Eventos de arrecadação',
-  'Registro de triagem e movimentação (logs)',
+  'Visualização de logs de triagem e movimentação (neste aparelho)',
   'Conta e perfil do usuário',
 ]
 
