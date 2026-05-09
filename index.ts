@@ -1,7 +1,10 @@
 import 'react-native-gesture-handler';
+import { LogBox } from 'react-native';
 import { registerRootComponent } from 'expo';
 
 import App from './App';
+
+LogBox.ignoreLogs(['Require cycle: node_modules/victory']);
 
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);
 // It also ensures that whether you load the app in Expo Go or in a native build,

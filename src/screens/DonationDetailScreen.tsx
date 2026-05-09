@@ -1,5 +1,6 @@
 import { useHeaderHeight } from '@react-navigation/elements'
 import { useRoute, RouteProp } from '@react-navigation/native'
+import * as ImagePicker from 'expo-image-picker'
 import React, { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
@@ -14,11 +15,13 @@ import {
   View,
 } from 'react-native'
 
+import { DonationImagePreview } from '../components/DonationImagePreview'
 import { DismissKeyboardOnTap } from '../components/DismissKeyboardOnTap'
 import type { DonationsStackParamList } from '../navigation/DonationsStack'
 import type { IFamily } from '../types/family'
-import type { IDonation } from '../types/donation'
+import type { DonationUpdatePayload, IDonation } from '../types/donation'
 import {
+  type DonationImagePick,
   allocateDonationToFamily,
   getDonationById,
   updateDonation,
@@ -43,6 +46,7 @@ export function DonationDetailScreen() {
   const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(null)
   const [allocateQty, setAllocateQty] = useState('')
   const [allocating, setAllocating] = useState(false)
+  const [pickedImage, setPickedImage] = useState<DonationImagePick | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -77,6 +81,28 @@ export function DonationDetailScreen() {
     }
   }, [])
 
+  const handlePickGallery = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (status !== 'granted') {
+      Alert.alert('Permissão', 'Precisamos da galeria para escolher a foto.')
+      return
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.85,
+    })
+    if (result.canceled) return
+    const asset = result.assets[0]
+    if (!asset?.uri) return
+    setPickedImage({
+      uri: asset.uri,
+      name: asset.fileName ?? undefined,
+      mimeType: asset.mimeType ?? undefined,
+      width: asset.width,
+      height: asset.height,
+    })
+  }
+
   const handleSave = async () => {
     const qty = Number(currentQuantity)
     if (Number.isNaN(qty) || qty < 0) {
@@ -86,15 +112,38 @@ export function DonationDetailScreen() {
     if (!donation) return
     setSaving(true)
     try {
-      const updated = await updateDonation(donation.id, {
+      if (__DEV__) {
+        // eslint-disable-next-line no-console
+        console.log('[DonationDetailScreen] handleSave → updateDonation', {
+          id: donation.id,
+          comNovaFoto: pickedImage?.uri,
+          qty,
+          available,
+        })
+      }
+      const payload: DonationUpdatePayload = {
+        category_id: donation.category_id,
+        name: donation.name,
+        description: donation.description ?? '',
+        initial_quantity: donation.initial_quantity,
         current_quantity: qty,
+        donator_name: donation.donator_name ?? '',
+        gender: donation.gender ?? '',
+        size: donation.size ?? '',
+        active: donation.active !== false,
         available,
-      })
+      }
+      const { donation: updated, errorMessage } = await updateDonation(
+        donation.id,
+        payload,
+        pickedImage ?? undefined
+      )
       if (updated) {
+        setPickedImage(null)
         setDonation(updated)
         Alert.alert('Sucesso', 'Doação atualizada.')
       } else {
-        Alert.alert('Erro', 'Não foi possível atualizar.')
+        Alert.alert('Erro ao atualizar', errorMessage ?? 'Não foi possível atualizar.')
       }
     } catch {
       Alert.alert('Erro', 'Falha ao salvar.')
@@ -148,6 +197,8 @@ export function DonationDetailScreen() {
 
   const unit = donation.category?.measure_unity ?? '—'
 
+  const imagePreviewUri = pickedImage?.uri ?? donation.image_url ?? null
+
   return (
     <KeyboardAvoidingView
       style={styles.avoid}
@@ -167,6 +218,31 @@ export function DonationDetailScreen() {
           <Text style={styles.value}>{unit}</Text>
           <Text style={styles.label}>Doador</Text>
           <Text style={styles.value}>{donation.donator_name ?? '—'}</Text>
+          <Text style={styles.label}>Foto do item</Text>
+          {imagePreviewUri ? (
+            <DonationImagePreview
+              uri={imagePreviewUri}
+              imageContentType={
+                pickedImage ? undefined : (donation.image_content_type ?? undefined)
+              }
+            />
+          ) : (
+            <Text style={styles.imagePlaceholder}>Nenhuma foto cadastrada.</Text>
+          )}
+          <View style={styles.imageActions}>
+            <TouchableOpacity style={styles.btnOutline} onPress={handlePickGallery}>
+              <Text style={styles.btnOutlineText}>Escolher da galeria</Text>
+            </TouchableOpacity>
+            {pickedImage ? (
+              <TouchableOpacity style={styles.btnOutlineMuted} onPress={() => setPickedImage(null)}>
+                <Text style={styles.btnOutlineMutedText}>Descartar nova foto</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+          <Text style={styles.sectionHintMuted}>
+            A nova foto será enviada ao salvar. Campos como quantidade e disponibilidade podem ser
+            alterados na mesma ação.
+          </Text>
           <Text style={styles.label}>Quantidade atual</Text>
           <TextInput
             style={styles.input}
@@ -283,6 +359,44 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.text,
     marginTop: 4,
+  },
+  imagePlaceholder: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 14,
+    color: colors.mutedText,
+    marginTop: 8,
+  },
+  imageActions: { marginTop: 12, gap: 10 },
+  btnOutline: {
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  btnOutlineText: {
+    fontFamily: fontFamilies.semiBold,
+    fontSize: 15,
+    color: colors.primary,
+  },
+  btnOutlineMuted: {
+    borderWidth: 1,
+    borderColor: colors.border_input,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  btnOutlineMutedText: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 14,
+    color: colors.mutedText,
+  },
+  sectionHintMuted: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 12,
+    color: colors.mutedText,
+    marginTop: 10,
+    lineHeight: 18,
   },
   input: {
     borderWidth: 1,

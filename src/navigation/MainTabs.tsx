@@ -80,11 +80,11 @@ export function MainTabs() {
         name="Charts"
         component={ChartsScreen}
         options={{
-          title: 'Gráficos',
+          title: 'Painel',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="bar-chart-outline" size={size} color={color} />
+            <Ionicons name="stats-chart-outline" size={size} color={color} />
           ),
-          tabBarLabel: ({ focused }) => <TabLabel label="Gráficos" focused={focused} />,
+          tabBarLabel: ({ focused }) => <TabLabel label="Painel" focused={focused} />,
         }}
       />
       <Tab.Screen
