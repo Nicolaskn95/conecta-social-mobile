@@ -112,15 +112,6 @@ export function DonationDetailScreen() {
     if (!donation) return
     setSaving(true)
     try {
-      if (__DEV__) {
-        // eslint-disable-next-line no-console
-        console.log('[DonationDetailScreen] handleSave → updateDonation', {
-          id: donation.id,
-          comNovaFoto: pickedImage?.uri,
-          qty,
-          available,
-        })
-      }
       const payload: DonationUpdatePayload = {
         category_id: donation.category_id,
         name: donation.name,
