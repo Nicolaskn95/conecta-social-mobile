@@ -5,7 +5,11 @@ import { env } from '../config/env'
 import { api } from './api'
 import { getApiErrorMessage } from './apiError'
 import { getAuthToken } from '../storage/secureStore'
-import type { DonationUpdatePayload, IDonation } from '../types/donation'
+import type {
+  DonationStockAdjustmentPayload,
+  DonationUpdatePayload,
+  IDonation,
+} from '../types/donation'
 
 /** Maior lado da imagem após redimensionar (px); reduz peso antes do JPEG. */
 const UPLOAD_IMAGE_MAX_EDGE = 1920
@@ -133,18 +137,13 @@ export async function getDonationById(id: string): Promise<IDonation | null> {
  */
 function appendMultipartDonationFields(form: FormData, payload: DonationUpdatePayload) {
   const str = (v: string | null | undefined) => (v == null || v === '' ? '' : String(v))
-  const numStr = (v: number | undefined) => (v === undefined || Number.isNaN(v) ? '' : String(v))
-
-  form.append('size', str(payload.size))
-  form.append('gender', str(payload.gender))
-  form.append('active', payload.active === false ? 'false' : 'true')
-  form.append('initial_quantity', numStr(payload.initial_quantity))
-  form.append('available', payload.available === false ? 'false' : 'true')
-  form.append('name', str(payload.name))
-  form.append('current_quantity', numStr(payload.current_quantity))
-  form.append('donator_name', str(payload.donator_name))
-  form.append('description', str(payload.description))
-  form.append('category_id', str(payload.category_id))
+  if (payload.size !== undefined) form.append('size', str(payload.size))
+  if (payload.gender !== undefined) form.append('gender', str(payload.gender))
+  if (payload.active !== undefined) form.append('active', payload.active ? 'true' : 'false')
+  if (payload.name !== undefined) form.append('name', str(payload.name))
+  if (payload.donator_name !== undefined) form.append('donator_name', str(payload.donator_name))
+  if (payload.description !== undefined) form.append('description', str(payload.description))
+  if (payload.category_id !== undefined) form.append('category_id', str(payload.category_id))
 }
 
 export async function updateDonation(
@@ -232,6 +231,40 @@ export async function allocateDonationToFamily(
     return {
       donation: null,
       errorMessage: typeof msg === 'string' ? msg : 'Não foi possível destinar.',
+    }
+  }
+}
+
+export async function adjustDonationStock(
+  id: string,
+  payload: DonationStockAdjustmentPayload
+): Promise<{ donation: IDonation | null; errorMessage?: string }> {
+  try {
+    const res = await api.post<{
+      data?: { donation?: IDonation } | IDonation
+    }>(`/donations/${id}/stock-adjustments`, {
+      delta_quantity: payload.delta_quantity,
+      reason: payload.reason,
+      note: payload.note?.trim() ? payload.note.trim() : undefined,
+    })
+
+    const data = unwrap<{ donation?: IDonation } | IDonation>(res.data)
+    if (!data) {
+      return {
+        donation: null,
+        errorMessage: 'Resposta da API sem dados da doação.',
+      }
+    }
+
+    if (typeof data === 'object' && 'donation' in data) {
+      return { donation: data.donation ?? null }
+    }
+
+    return { donation: data as IDonation }
+  } catch (err) {
+    return {
+      donation: null,
+      errorMessage: getApiErrorMessage(err, 'Não foi possível ajustar o estoque.'),
     }
   }
 }

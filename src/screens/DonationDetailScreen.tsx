@@ -1,7 +1,7 @@
 import { useHeaderHeight } from '@react-navigation/elements'
 import { useRoute, RouteProp } from '@react-navigation/native'
 import * as ImagePicker from 'expo-image-picker'
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -19,9 +19,14 @@ import { DonationImagePreview } from '../components/DonationImagePreview'
 import { DismissKeyboardOnTap } from '../components/DismissKeyboardOnTap'
 import type { DonationsStackParamList } from '../navigation/DonationsStack'
 import type { IFamily } from '../types/family'
-import type { DonationUpdatePayload, IDonation } from '../types/donation'
+import type {
+  DonationStockAdjustmentReason,
+  DonationUpdatePayload,
+  IDonation,
+} from '../types/donation'
 import {
   type DonationImagePick,
+  adjustDonationStock,
   allocateDonationToFamily,
   getDonationById,
   updateDonation,
@@ -32,6 +37,18 @@ import { fontFamilies } from '../theme/typography'
 
 type Route = RouteProp<DonationsStackParamList, 'DonationDetail'>
 
+const STOCK_ADJUSTMENT_REASONS: Array<{
+  value: DonationStockAdjustmentReason
+  label: string
+}> = [
+  { value: 'SPOILAGE', label: 'Produto estragado' },
+  { value: 'LOSS', label: 'Perda' },
+  { value: 'DAMAGE', label: 'Dano' },
+  { value: 'EXPIRATION', label: 'Vencimento' },
+  { value: 'INVENTORY_CORRECTION', label: 'Correção de inventário' },
+  { value: 'OTHER', label: 'Outro' },
+]
+
 export function DonationDetailScreen() {
   const headerHeight = useHeaderHeight()
   const route = useRoute<Route>()
@@ -39,23 +56,23 @@ export function DonationDetailScreen() {
   const [donation, setDonation] = useState<IDonation | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [currentQuantity, setCurrentQuantity] = useState('')
-  const [available, setAvailable] = useState(true)
   const [families, setFamilies] = useState<IFamily[]>([])
   const [familiesLoading, setFamiliesLoading] = useState(true)
   const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(null)
   const [allocateQty, setAllocateQty] = useState('')
   const [allocating, setAllocating] = useState(false)
   const [pickedImage, setPickedImage] = useState<DonationImagePick | null>(null)
+  const [stockDelta, setStockDelta] = useState('')
+  const [stockReason, setStockReason] = useState<DonationStockAdjustmentReason>(
+    'INVENTORY_CORRECTION'
+  )
+  const [stockNote, setStockNote] = useState('')
+  const [adjustingStock, setAdjustingStock] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
     const d = await getDonationById(donationId)
     setDonation(d)
-    if (d) {
-      setCurrentQuantity(String(d.current_quantity ?? d.initial_quantity))
-      setAvailable(d.available !== false)
-    }
     setLoading(false)
   }, [donationId])
 
@@ -104,11 +121,6 @@ export function DonationDetailScreen() {
   }
 
   const handleSave = async () => {
-    const qty = Number(currentQuantity)
-    if (Number.isNaN(qty) || qty < 0) {
-      Alert.alert('Erro', 'Quantidade não pode ser negativa.')
-      return
-    }
     if (!donation) return
     setSaving(true)
     try {
@@ -116,13 +128,10 @@ export function DonationDetailScreen() {
         category_id: donation.category_id,
         name: donation.name,
         description: donation.description ?? '',
-        initial_quantity: donation.initial_quantity,
-        current_quantity: qty,
         donator_name: donation.donator_name ?? '',
         gender: donation.gender ?? '',
         size: donation.size ?? '',
         active: donation.active !== false,
-        available,
       }
       const { donation: updated, errorMessage } = await updateDonation(
         donation.id,
@@ -140,6 +149,42 @@ export function DonationDetailScreen() {
       Alert.alert('Erro', 'Falha ao salvar.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleAdjustStock = async () => {
+    if (!donation) return
+
+    const delta = Number(stockDelta)
+    if (!Number.isInteger(delta) || delta === 0) {
+      Alert.alert('Ajuste', 'Informe um delta inteiro diferente de zero.')
+      return
+    }
+
+    if (stockReason === 'OTHER' && !stockNote.trim()) {
+      Alert.alert('Ajuste', 'A observação é obrigatória quando o motivo é Outro.')
+      return
+    }
+
+    setAdjustingStock(true)
+    try {
+      const { donation: updated, errorMessage } = await adjustDonationStock(donation.id, {
+        delta_quantity: delta,
+        reason: stockReason,
+        note: stockNote.trim() ? stockNote.trim() : undefined,
+      })
+
+      if (updated) {
+        setDonation(updated)
+        setStockDelta('')
+        setStockReason('INVENTORY_CORRECTION')
+        setStockNote('')
+        Alert.alert('Sucesso', 'Ajuste de estoque registrado.')
+      } else {
+        Alert.alert('Erro no ajuste', errorMessage ?? 'Não foi possível ajustar o estoque.')
+      }
+    } finally {
+      setAdjustingStock(false)
     }
   }
 
@@ -167,7 +212,6 @@ export function DonationDetailScreen() {
       })
       if (updated) {
         setDonation(updated)
-        setCurrentQuantity(String(updated.current_quantity ?? 0))
         setAllocateQty('')
         Alert.alert('Sucesso', 'Quantidade destinada à família e estoque atualizado.')
       } else {
@@ -178,6 +222,17 @@ export function DonationDetailScreen() {
     }
   }
 
+  const stock = donation?.current_quantity ?? 0
+  const isOutOfStock = stock < 1
+  const unit = donation?.category?.measure_unity ?? '—'
+
+  const imagePreviewUri = pickedImage?.uri ?? donation?.image_url ?? null
+
+  const stockAvailabilityLabel = useMemo(
+    () => ((donation?.current_quantity ?? 0) > 0 ? 'Disponível' : 'Sem estoque'),
+    [donation?.current_quantity]
+  )
+
   if (loading || !donation) {
     return (
       <View style={styles.centered}>
@@ -185,10 +240,6 @@ export function DonationDetailScreen() {
       </View>
     )
   }
-
-  const unit = donation.category?.measure_unity ?? '—'
-
-  const imagePreviewUri = pickedImage?.uri ?? donation.image_url ?? null
 
   return (
     <KeyboardAvoidingView
@@ -231,33 +282,92 @@ export function DonationDetailScreen() {
             ) : null}
           </View>
           <Text style={styles.sectionHintMuted}>
-            A nova foto será enviada ao salvar. Campos como quantidade e disponibilidade podem ser
-            alterados na mesma ação.
+            A nova foto será enviada ao salvar os dados gerais da doação.
           </Text>
-          <Text style={styles.label}>Quantidade atual</Text>
-          <TextInput
-            style={styles.input}
-            value={currentQuantity}
-            onChangeText={setCurrentQuantity}
-            placeholder="0"
-            placeholderTextColor={colors.mutedText}
-            keyboardType="numeric"
-            returnKeyType="done"
-            onSubmitEditing={Keyboard.dismiss}
-          />
-          <TouchableOpacity
-            style={[styles.toggle, !available && styles.toggleOff]}
-            onPress={() => setAvailable(!available)}
-          >
-            <Text style={styles.toggleText}>
-              {available ? 'Disponível' : 'Indisponível (reparo/higienização)'}
-            </Text>
-          </TouchableOpacity>
+
           {saving ? (
             <ActivityIndicator color={colors.primary} style={styles.loader} />
           ) : (
             <TouchableOpacity style={styles.btnPrimary} onPress={handleSave}>
-              <Text style={styles.btnPrimaryText}>Salvar</Text>
+              <Text style={styles.btnPrimaryText}>Salvar dados gerais</Text>
+            </TouchableOpacity>
+          )}
+
+          <View style={styles.sectionDivider} />
+          <Text style={styles.sectionTitle}>Ajuste de estoque</Text>
+          <Text style={styles.sectionHint}>
+            Registre perda, vencimento ou correção de inventário sem editar manualmente o estoque na
+            atualização geral.
+          </Text>
+
+          <View style={styles.stockGrid}>
+            <View style={styles.stockCard}>
+              <Text style={styles.stockLabel}>Quantidade inicial</Text>
+              <Text style={styles.stockValue}>{donation.initial_quantity}</Text>
+            </View>
+            <View style={styles.stockCard}>
+              <Text style={styles.stockLabel}>Estoque atual</Text>
+              <Text style={styles.stockValue}>{stock}</Text>
+            </View>
+            <View style={styles.stockCard}>
+              <Text style={styles.stockLabel}>Disponibilidade</Text>
+              <Text style={styles.stockValue}>{stockAvailabilityLabel}</Text>
+            </View>
+          </View>
+
+          <Text style={styles.label}>Ajuste (delta) ({unit})</Text>
+          <TextInput
+            style={styles.input}
+            value={stockDelta}
+            onChangeText={setStockDelta}
+            placeholder="Ex.: -2 ou 5"
+            placeholderTextColor={colors.mutedText}
+            keyboardType="numeric"
+            returnKeyType="done"
+            onSubmitEditing={Keyboard.dismiss}
+            editable={!adjustingStock}
+          />
+          <Text style={styles.sectionHintMuted}>
+            Valores negativos reduzem o estoque; positivos incrementam.
+          </Text>
+
+          <Text style={styles.label}>Motivo</Text>
+          <View style={styles.reasonList}>
+            {STOCK_ADJUSTMENT_REASONS.map((option) => {
+              const selected = stockReason === option.value
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[styles.reasonChip, selected && styles.reasonChipActive]}
+                  onPress={() => setStockReason(option.value)}
+                  disabled={adjustingStock}
+                >
+                  <Text style={[styles.reasonChipText, selected && styles.reasonChipTextActive]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
+
+          <Text style={styles.label}>Observação {stockReason === 'OTHER' ? '*' : ''}</Text>
+          <TextInput
+            style={[styles.input, styles.inputMultiline]}
+            value={stockNote}
+            onChangeText={setStockNote}
+            placeholder="Detalhe do ajuste"
+            placeholderTextColor={colors.mutedText}
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+            editable={!adjustingStock}
+          />
+
+          {adjustingStock ? (
+            <ActivityIndicator color={colors.primary} style={styles.loader} />
+          ) : (
+            <TouchableOpacity style={styles.btnSecondary} onPress={handleAdjustStock}>
+              <Text style={styles.btnSecondaryText}>Registrar ajuste de estoque</Text>
             </TouchableOpacity>
           )}
 
@@ -266,11 +376,7 @@ export function DonationDetailScreen() {
           <Text style={styles.sectionHint}>
             Registra a entrega e reduz automaticamente a quantidade em estoque.
           </Text>
-          {!donation.available ? (
-            <Text style={styles.warningText}>
-              Item indisponível: destinação bloqueada até marcar como disponível.
-            </Text>
-          ) : (donation.current_quantity ?? 0) < 1 ? (
+          {isOutOfStock ? (
             <Text style={styles.warningText}>Sem quantidade em estoque para destinar.</Text>
           ) : familiesLoading ? (
             <ActivityIndicator color={colors.primary} style={styles.loader} />
@@ -399,19 +505,8 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.regular,
     marginTop: 6,
   },
-  toggle: {
-    marginTop: 16,
-    padding: 12,
-    borderRadius: 10,
-    backgroundColor: colors.success_light,
-    borderWidth: 1,
-    borderColor: colors.success,
-  },
-  toggleOff: { backgroundColor: colors.danger_hover, borderColor: colors.danger },
-  toggleText: {
-    fontFamily: fontFamilies.semiBold,
-    fontSize: 14,
-    color: colors.text,
+  inputMultiline: {
+    minHeight: 96,
   },
   loader: { marginTop: 24 },
   btnPrimary: {
@@ -447,6 +542,57 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginBottom: 12,
     lineHeight: 20,
+  },
+  stockGrid: {
+    marginTop: 4,
+    gap: 10,
+  },
+  stockCard: {
+    borderWidth: 1,
+    borderColor: colors.border_input,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: colors.white,
+  },
+  stockLabel: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 12,
+    color: colors.mutedText,
+    textTransform: 'uppercase',
+  },
+  stockValue: {
+    fontFamily: fontFamilies.semiBold,
+    fontSize: 18,
+    color: colors.text,
+    marginTop: 6,
+  },
+  reasonList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  reasonChip: {
+    borderWidth: 1,
+    borderColor: colors.border_input,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: colors.background,
+  },
+  reasonChipActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.header_sidebar_color,
+  },
+  reasonChipText: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 12,
+    color: colors.text,
+  },
+  reasonChipTextActive: {
+    fontFamily: fontFamilies.semiBold,
+    color: colors.primary,
   },
   warningText: {
     fontFamily: fontFamilies.regular,

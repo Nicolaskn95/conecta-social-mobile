@@ -32,11 +32,22 @@ export interface DonationUpdatePayload {
   category_id?: string
   name?: string
   description?: string
-  initial_quantity?: number
-  current_quantity?: number
   donator_name?: string
   gender?: string
   size?: string
   active?: boolean
-  available?: boolean
+}
+
+export type DonationStockAdjustmentReason =
+  | 'SPOILAGE'
+  | 'LOSS'
+  | 'DAMAGE'
+  | 'EXPIRATION'
+  | 'INVENTORY_CORRECTION'
+  | 'OTHER'
+
+export interface DonationStockAdjustmentPayload {
+  delta_quantity: number
+  reason: DonationStockAdjustmentReason
+  note?: string
 }
