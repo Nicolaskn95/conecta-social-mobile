@@ -217,9 +217,13 @@ export async function allocateDonationToFamily(
   payload: { family_id: string; quantity: number }
 ): Promise<{ donation: IDonation | null; errorMessage?: string }> {
   try {
-    const res = await api.post<{ data?: IDonation }>(`/donations/${donationId}/allocate`, payload)
-    const data = unwrap<IDonation>(res.data)
-    return { donation: data ?? null }
+    const res = await api.post<{ data?: { donation?: IDonation } }>('/donations-to-family', {
+      id_donation: donationId,
+      id_family: payload.family_id,
+      quantity: payload.quantity,
+    })
+    const data = unwrap<{ donation?: IDonation }>(res.data)
+    return { donation: data?.donation ?? null }
   } catch (err: unknown) {
     const msg =
       err && typeof err === 'object' && 'response' in err
