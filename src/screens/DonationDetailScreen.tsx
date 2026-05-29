@@ -157,7 +157,7 @@ export function DonationDetailScreen() {
 
     const delta = Number(stockDelta)
     if (!Number.isInteger(delta) || delta === 0) {
-      Alert.alert('Ajuste', 'Informe um delta inteiro diferente de zero.')
+      Alert.alert('Ajuste', 'Informe uma quantidade inteira diferente de zero.')
       return
     }
 
@@ -315,7 +315,7 @@ export function DonationDetailScreen() {
             </View>
           </View>
 
-          <Text style={styles.label}>Ajuste (delta) ({unit})</Text>
+          <Text style={styles.label}>Quantidade de ajuste ({unit})</Text>
           <TextInput
             style={styles.input}
             value={stockDelta}
@@ -367,7 +367,7 @@ export function DonationDetailScreen() {
             <ActivityIndicator color={colors.primary} style={styles.loader} />
           ) : (
             <TouchableOpacity style={styles.btnSecondary} onPress={handleAdjustStock}>
-              <Text style={styles.btnSecondaryText}>Registrar ajuste de estoque</Text>
+              <Text style={styles.btnSecondaryText}>Registrar movimentação de estoque</Text>
             </TouchableOpacity>
           )}
 
