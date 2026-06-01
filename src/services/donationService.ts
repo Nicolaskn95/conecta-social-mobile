@@ -1,7 +1,7 @@
 import * as ImageManipulator from 'expo-image-manipulator'
 import type { Action } from 'expo-image-manipulator'
 
-import { env } from '../config/env'
+import { getApiBaseUrl } from '../config/runtimeApiBaseUrl'
 import { api } from './api'
 import { getApiErrorMessage } from './apiError'
 import { getAuthToken } from '../storage/secureStore'
@@ -29,7 +29,7 @@ async function putDonationMultipart(
   form: FormData
 ): Promise<{ ok: true; data: unknown } | { ok: false; status: number; body: unknown }> {
   const token = await getAuthToken()
-  const base = env.apiBaseUrl.replace(/\/$/, '')
+  const base = getApiBaseUrl().replace(/\/$/, '')
   const url = `${base}/donations/${id}`
   const controller = new AbortController()
   const timeoutMs = 120_000

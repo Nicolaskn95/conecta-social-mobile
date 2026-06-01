@@ -1,10 +1,11 @@
 import axios, { AxiosHeaders } from 'axios'
 
-import { env } from '../config/env'
+import { getDefaultApiBaseUrl } from '../config/env'
+import { getApiBaseUrl } from '../config/runtimeApiBaseUrl'
 import { getAuthToken } from '../storage/secureStore'
 
 export const api = axios.create({
-  baseURL: env.apiBaseUrl,
+  baseURL: getDefaultApiBaseUrl(),
   timeout: 30000, // 30s — evita timeout em APIs que demoram (ex.: cold start no Render)
 })
 
@@ -13,6 +14,7 @@ function isFormData(data: unknown): boolean {
 }
 
 api.interceptors.request.use(async (config) => {
+  config.baseURL = getApiBaseUrl()
   const token = await getAuthToken()
   const headers = AxiosHeaders.from(config.headers ?? {})
   if (token) {

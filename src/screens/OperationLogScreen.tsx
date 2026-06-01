@@ -2,8 +2,9 @@ import { useFocusEffect } from '@react-navigation/native'
 import React, { useCallback, useMemo, useState } from 'react'
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
-import type { OperationLogEntry } from '../storage/operationLogStorage'
-import { getLogs } from '../storage/operationLogStorage'
+import type { IAuditLog } from '../services/auditLogService'
+import { getAuditLogs } from '../services/auditLogService'
+import { getApiErrorMessage } from '../services/apiError'
 import { colors } from '../theme/colors'
 import { fontFamilies } from '../theme/typography'
 
@@ -25,20 +26,31 @@ function formatWhen(iso: string): string {
   }
 }
 
-function typeLabel(type: OperationLogEntry['type']): string {
+function resolveAuditType(entityType: IAuditLog['entityType']): Exclude<Filter, 'all'> {
+  return entityType === 'DONATION' || entityType === 'DONATION_TO_FAMILY' ? 'movimentacao' : 'triagem'
+}
+
+function typeLabel(type: Exclude<Filter, 'all'>): string {
   return type === 'triagem' ? 'Triagem' : 'Movimentação'
 }
 
 export function OperationLogScreen() {
-  const [logs, setLogs] = useState<OperationLogEntry[]>([])
+  const [logs, setLogs] = useState<IAuditLog[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<Filter>('all')
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
-    const list = await getLogs()
-    setLogs(list)
-    setLoading(false)
+    setErrorMessage(null)
+    try {
+      const list = await getAuditLogs()
+      setLogs(list)
+    } catch (err) {
+      setErrorMessage(getApiErrorMessage(err, 'Não foi possível carregar os logs de auditoria.'))
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useFocusEffect(
@@ -49,17 +61,20 @@ export function OperationLogScreen() {
 
   const filtered = useMemo(() => {
     if (filter === 'all') return logs
-    return logs.filter((l) => l.type === filter)
+    return logs.filter((log) => resolveAuditType(log.entityType) === filter)
   }, [logs, filter])
 
   const renderItem = useCallback(
-    ({ item }: { item: OperationLogEntry }) => (
+    ({ item }: { item: IAuditLog }) => (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <View
-            style={[styles.badge, item.type === 'triagem' ? styles.badgeTriagem : styles.badgeMov]}
+            style={[
+              styles.badge,
+              resolveAuditType(item.entityType) === 'triagem' ? styles.badgeTriagem : styles.badgeMov,
+            ]}
           >
-            <Text style={styles.badgeText}>{typeLabel(item.type)}</Text>
+            <Text style={styles.badgeText}>{typeLabel(resolveAuditType(item.entityType))}</Text>
           </View>
           <Text style={styles.dateText}>{formatWhen(item.createdAt)}</Text>
         </View>
@@ -79,7 +94,7 @@ export function OperationLogScreen() {
 
   return (
     <View style={styles.screen}>
-      <Text style={styles.intro}>Registros salvos neste aparelho (triagem e movimentação).</Text>
+      <Text style={styles.intro}>Registros de auditoria vindos da API.</Text>
       <Text style={styles.filterLabel}>Filtrar</Text>
       <View style={styles.chips}>
         {(
@@ -105,7 +120,8 @@ export function OperationLogScreen() {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <Text style={styles.empty}>
-            {logs.length === 0 ? 'Nenhum log armazenado ainda.' : 'Nenhum log para este filtro.'}
+            {errorMessage ??
+              (logs.length === 0 ? 'Nenhum log de auditoria encontrado.' : 'Nenhum log para este filtro.')}
           </Text>
         }
         showsVerticalScrollIndicator={false}

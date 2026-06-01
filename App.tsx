@@ -11,7 +11,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppErrorBoundary } from './src/components/AppErrorBoundary';
+import { DevApiEnvironmentSwitcher } from './src/components/dev/DevApiEnvironmentSwitcher';
 import { AuthProvider } from './src/auth/AuthContext';
+import { initRuntimeApiBaseUrl } from './src/config/runtimeApiBaseUrl';
 import { RootNavigator } from './src/navigation/RootNavigator';
 
 SplashScreen.preventAutoHideAsync();
@@ -33,6 +35,10 @@ export default function App() {
     onLayoutRootView();
   }, [onLayoutRootView]);
 
+  useEffect(() => {
+    void initRuntimeApiBaseUrl();
+  }, []);
+
   if (!fontsLoaded && !fontError) {
     return null;
   }
@@ -45,6 +51,7 @@ export default function App() {
             <NavigationContainer>
               <RootNavigator />
             </NavigationContainer>
+            <DevApiEnvironmentSwitcher />
           </AuthProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>

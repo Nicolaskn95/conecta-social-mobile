@@ -16,13 +16,14 @@ import {
 } from 'react-native'
 
 import { useAuth } from '../../auth/useAuth'
-import { env } from '../../config/env'
+import { useApiBaseUrl } from '../../hooks/useApiBaseUrl'
 import { api } from '../../services/api'
 import { colors } from '../../theme/colors'
 import { fontFamilies } from '../../theme/typography'
 
 export function LoginScreen() {
   const insets = useSafeAreaInsets()
+  const apiBaseUrl = useApiBaseUrl()
   const { signInWithToken } = useAuth()
   const passwordRef = useRef<TextInput>(null)
   const [email, setEmail] = useState('')
@@ -170,7 +171,7 @@ export function LoginScreen() {
 
         {__DEV__ ? (
           <Text style={styles.devHint} numberOfLines={2}>
-            {env.apiBaseUrl}
+            {apiBaseUrl}
           </Text>
         ) : null}
       </ScrollView>
