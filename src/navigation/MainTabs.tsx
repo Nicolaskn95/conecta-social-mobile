@@ -58,6 +58,17 @@ export function MainTabs() {
         }}
       />
       <Tab.Screen
+        name="Charts"
+        component={ChartsScreen}
+        options={{
+          title: 'Painel',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="stats-chart-outline" size={size} color={color} />
+          ),
+          tabBarLabel: ({ focused }) => <TabLabel label="Painel" focused={focused} />,
+        }}
+      />
+      <Tab.Screen
         name="Donations"
         component={DonationsStack}
         options={{
@@ -74,17 +85,6 @@ export function MainTabs() {
           title: 'Eventos',
           tabBarIcon: ({ color, size }) => <Ionicons name="calendar" size={size} color={color} />,
           tabBarLabel: ({ focused }) => <TabLabel label="Eventos" focused={focused} />,
-        }}
-      />
-      <Tab.Screen
-        name="Charts"
-        component={ChartsScreen}
-        options={{
-          title: 'Painel',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="stats-chart-outline" size={size} color={color} />
-          ),
-          tabBarLabel: ({ focused }) => <TabLabel label="Painel" focused={focused} />,
         }}
       />
       <Tab.Screen

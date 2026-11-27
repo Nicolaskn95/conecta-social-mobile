@@ -19,22 +19,45 @@ import {
   getInstagramPostUrlFromEmbedHtml,
 } from '../utils/instagramEmbed'
 
+function formatEventDate(value: string): string {
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(value)
+    ? new Date(`${value}T00:00:00`)
+    : new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = new Intl.DateTimeFormat('pt-BR', { month: 'short' })
+    .format(date)
+    .replace(/\.$/, '')
+  return `${day}/${month}/${date.getFullYear()}`
+}
+
 export function EventsListScreen() {
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [events, setEvents] = useState<IEvent[]>([])
+  const [error, setError] = useState(false)
 
   const load = useCallback(async () => {
-    setLoading(true)
     try {
       const withEmbed = await getEventsRecentWithInstagram(10)
       setEvents(withEmbed.length > 0 ? withEmbed : await getEventsActive())
+      setError(false)
     } catch {
-      const list = await getEventsActive()
-      setEvents(list)
+      setError(true)
     } finally {
       setLoading(false)
     }
   }, [])
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      await load()
+    } finally {
+      setRefreshing(false)
+    }
+  }, [load])
 
   useEffect(() => {
     load()
@@ -48,20 +71,25 @@ export function EventsListScreen() {
     )
   }
 
-  if (events.length === 0) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.emptyText}>Nenhum evento encontrado.</Text>
-      </View>
-    )
-  }
-
   return (
     <View style={styles.container}>
+      {error && events.length > 0 ? (
+        <Text style={styles.emptyText}>Não foi possível atualizar os eventos. Tente novamente.</Text>
+      ) : null}
       <FlatList
         data={events}
+        numColumns={2}
+        columnWrapperStyle={styles.row}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        alwaysBounceVertical
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, events.length === 0 && styles.emptyList]}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>
+            {error ? 'Não foi possível carregar os eventos. Puxe para tentar novamente.' : 'Nenhum evento encontrado.'}
+          </Text>
+        }
         renderItem={({ item }) => {
           const hasEmbed = item.embedded_instagram && item.embedded_instagram.trim().length > 0
           if (hasEmbed) {
@@ -73,11 +101,12 @@ export function EventsListScreen() {
                   embedHtml={item.embedded_instagram!}
                   postId={postId}
                   style={styles.embed}
+                  compact
                 />
                 {item.name || item.date ? (
                   <View style={styles.cardCaption}>
                     {item.name ? <Text style={styles.cardTitle}>{item.name}</Text> : null}
-                    {item.date ? <Text style={styles.cardDate}>{item.date}</Text> : null}
+                    {item.date ? <Text style={styles.cardDate}>{formatEventDate(item.date)}</Text> : null}
                   </View>
                 ) : null}
                 {postUrl ? (
@@ -95,7 +124,7 @@ export function EventsListScreen() {
           return (
             <View style={styles.card}>
               <Text style={styles.cardTitle}>{item.name}</Text>
-              <Text style={styles.cardDate}>{item.date}</Text>
+              <Text style={styles.cardDate}>{item.date ? formatEventDate(item.date) : ''}</Text>
               {item.description ? (
                 <Text style={styles.cardDesc} numberOfLines={2}>
                   {item.description}
@@ -112,7 +141,9 @@ export function EventsListScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  listContent: { paddingBottom: 24 },
+  listContent: { paddingBottom: 24, paddingHorizontal: 8 },
+  row: { alignItems: 'flex-start' },
+  emptyList: { flexGrow: 1, justifyContent: 'center' },
   emptyText: {
     fontFamily: fontFamilies.regular,
     fontSize: 14,
@@ -120,15 +151,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   card: {
+    flex: 1,
+    maxWidth: '50%',
     borderWidth: 1,
     borderColor: colors.primary,
     borderRadius: 10,
     padding: 16,
-    marginHorizontal: 16,
+    marginHorizontal: 4,
     marginVertical: 6,
   },
   embedCard: {
-    marginHorizontal: 16,
+    flex: 1,
+    maxWidth: '50%',
+    marginHorizontal: 4,
     marginVertical: 8,
     backgroundColor: '#fff',
     borderRadius: 16,

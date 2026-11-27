@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import type { DashboardPeriod, IDashboardOverview } from '../core/dashboard/model/dashboard'
+import axios from 'axios'
 import { getDashboardOverview } from '../services/dashboardService'
 
 export function useDashboardOverview(period: DashboardPeriod): {
@@ -19,7 +20,18 @@ export function useDashboardOverview(period: DashboardPeriod): {
     try {
       const data = await getDashboardOverview(period)
       setOverview(data)
-    } catch {
+    } catch (err) {
+      const details = axios.isAxiosError(err)
+        ? {
+            message: err.message,
+            code: err.code,
+            status: err.response?.status,
+            method: err.config?.method?.toUpperCase(),
+            url: `${err.config?.baseURL ?? ''}${err.config?.url ?? ''}`,
+            response: err.response?.data,
+          }
+        : { message: err instanceof Error ? err.message : String(err) }
+      console.error('[Dashboard] Falha ao carregar /dashboard/overview', details, err)
       setError('Não foi possível carregar o painel.')
     } finally {
       setLoading(false)

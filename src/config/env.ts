@@ -5,4 +5,5 @@ export function getDefaultApiBaseUrl(): string {
 
 export const env = {
   apiBaseUrl: getDefaultApiBaseUrl(),
+  imageUploadEnabled: process.env.EXPO_PUBLIC_IMAGE_UPLOAD_ENABLED === 'true',
 } as const

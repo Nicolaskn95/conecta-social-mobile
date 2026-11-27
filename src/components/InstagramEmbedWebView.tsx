@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { WebView } from 'react-native-webview'
 
@@ -34,9 +34,12 @@ interface InstagramEmbedWebViewProps {
   /** Shortcode do post (ex.: ABC123). Quando informado, carrega a URL oficial do embed. */
   postId?: string | null
   style?: object
+  compact?: boolean
 }
 
-export function InstagramEmbedWebView({ embedHtml, postId, style }: InstagramEmbedWebViewProps) {
+export function InstagramEmbedWebView({ embedHtml, postId, style, compact = false }: InstagramEmbedWebViewProps) {
+  const [width, setWidth] = useState(0)
+  const scale = width ? Math.min(width / 326, 1) : 1
   const useEmbedUrl = Boolean(postId)
   const source = useMemo(
     () =>
@@ -47,12 +50,15 @@ export function InstagramEmbedWebView({ embedHtml, postId, style }: InstagramEmb
   )
 
   return (
-    <View style={[styles.wrapper, style]}>
+    <View
+      onLayout={compact ? (event) => setWidth(event.nativeEvent.layout.width) : undefined}
+      style={[styles.wrapper, compact && { height: width ? EMBED_HEIGHT * scale : 240 }, style]}
+    >
       <WebView
         source={source}
         originWhitelist={['*']}
         scrollEnabled={false}
-        style={styles.webview}
+        style={compact ? { width: 326, height: EMBED_HEIGHT, flex: 0, transformOrigin: 'top left', transform: [{ scale }] } : styles.webview}
         javaScriptEnabled
         domStorageEnabled
         mixedContentMode="compatibility"
