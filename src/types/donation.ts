@@ -1,3 +1,5 @@
+import type { ItemDetails } from '../services/donationWorkflow'
+
 export interface ICategory {
   id: string
   name: string
@@ -6,7 +8,7 @@ export interface ICategory {
   created_at?: string
 }
 
-export interface IDonation {
+export interface IDonation extends ItemDetails {
   id: string
   category_id: string
   category?: ICategory
@@ -28,7 +30,7 @@ export interface IDonation {
 }
 
 /** Campos aceitos no PUT `/donations/:id` (JSON ou multipart, alinhado ao Swagger/curl). */
-export interface DonationUpdatePayload {
+export interface DonationUpdatePayload extends ItemDetails {
   category_id?: string
   name?: string
   description?: string
@@ -36,6 +38,16 @@ export interface DonationUpdatePayload {
   gender?: string
   size?: string
   active?: boolean
+}
+
+export interface DonationCreatePayload extends ItemDetails {
+  category_id: string
+  name: string
+  initial_quantity: number
+  description?: string
+  donator_name?: string
+  gender?: string
+  size?: string
 }
 
 export type DonationStockAdjustmentReason =

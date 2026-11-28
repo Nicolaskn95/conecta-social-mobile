@@ -4,6 +4,7 @@
  */
 export const colors = {
   primary: '#387AA1',
+  primaryAction: '#28688D',
   secondary: '#4AA1D3',
   tertiary: '#BCD4E1',
   text: '#090934',

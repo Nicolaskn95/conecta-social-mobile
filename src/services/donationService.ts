@@ -1,3 +1,4 @@
+import { Allocation, Recipient, workflow } from './donationWorkflow'
 import * as ImageManipulator from 'expo-image-manipulator'
 import type { Action } from 'expo-image-manipulator'
 
@@ -7,6 +8,7 @@ import { getApiErrorMessage } from './apiError'
 import { getAuthToken } from '../storage/secureStore'
 import type {
   DonationStockAdjustmentPayload,
+  DonationCreatePayload,
   DonationUpdatePayload,
   IDonation,
 } from '../types/donation'
@@ -122,6 +124,13 @@ export async function getDonations(): Promise<IDonation[]> {
   return Array.isArray(data) ? data : []
 }
 
+export async function createDonation(payload: DonationCreatePayload): Promise<IDonation> {
+  const res = await api.post<{ data?: IDonation }>('/donations', payload)
+  const donation = unwrap<IDonation>(res.data)
+  if (!donation?.id) throw new Error('Resposta da API sem dados da doação.')
+  return donation
+}
+
 export async function getDonationById(id: string): Promise<IDonation | null> {
   try {
     const res = await api.get<{ data?: IDonation }>(`/donations/${id}`)
@@ -137,6 +146,9 @@ export async function getDonationById(id: string): Promise<IDonation | null> {
  */
 function appendMultipartDonationFields(form: FormData, payload: DonationUpdatePayload) {
   const str = (v: string | null | undefined) => (v == null || v === '' ? '' : String(v))
+  if (payload.item_type_id !== undefined) form.append('item_type_id', str(payload.item_type_id))
+  if (payload.condition !== undefined) form.append('condition', str(payload.condition))
+  if (payload.specifications !== undefined) form.append('specifications', payload.specifications === null ? '' : JSON.stringify(payload.specifications))
   if (payload.size !== undefined) form.append('size', str(payload.size))
   if (payload.gender !== undefined) form.append('gender', str(payload.gender))
   if (payload.active !== undefined) form.append('active', payload.active ? 'true' : 'false')
@@ -211,28 +223,11 @@ export async function updateDonation(
   }
 }
 
-export async function allocateDonationToFamily(
+export function allocateDonationToFamily(
   donationId: string,
-  payload: { family_id: string; quantity: number }
-): Promise<{ donation: IDonation | null; errorMessage?: string }> {
-  try {
-    const res = await api.post<{ data?: { donation?: IDonation } }>('/donations-to-family', {
-      id_donation: donationId,
-      id_family: payload.family_id,
-      quantity: payload.quantity,
-    })
-    const data = unwrap<{ donation?: IDonation }>(res.data)
-    return { donation: data?.donation ?? null }
-  } catch (err: unknown) {
-    const msg =
-      err && typeof err === 'object' && 'response' in err
-        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
-        : undefined
-    return {
-      donation: null,
-      errorMessage: typeof msg === 'string' ? msg : 'Não foi possível destinar.',
-    }
-  }
+  { family_id, ...data }: { family_id: string; quantity: number; request_id: string } & Recipient
+): Promise<Allocation> {
+  return workflow('/donations-to-family', 'POST', { ...data, id_donation: donationId, id_family: family_id })
 }
 
 export async function adjustDonationStock(

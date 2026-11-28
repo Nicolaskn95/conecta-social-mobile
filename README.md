@@ -71,3 +71,11 @@ Para manter o padrão visual do web e o alto contraste (RNF-L03), os componentes
 | **Navegação / sidebar** | `.sidebar-color`, `.sidebar-menu` | Fundo `header_sidebar_color`. Item ativo: fundo `primary`, texto branco. Item inativo: texto `primary`. Uso: menu principal, abas, bottom tab. |
 
 Utilize sempre o **theme** (ex.: `src/theme/`) do app para aplicar essas cores e estilos, de forma a facilitar futura adoção de Dark Mode e manutenção alinhada ao web.
+
+# Upload de imagens
+
+O envio de imagens de doações fica desabilitado por padrão. Para habilitá-lo,
+configure `EXPO_PUBLIC_IMAGE_UPLOAD_ENABLED=true` no arquivo `.env`. Com a
+opção desabilitada, as imagens das doações ficam ocultas e os demais dados
+podem ser salvos normalmente. Reinicie o Expo após alterar a variável;
+para aplicativos distribuídos, gere um novo build para aplicar a configuração.
